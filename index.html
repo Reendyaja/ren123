@@ -4,26 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wingo Predictor Pro</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-            background: #0a0a12;
-        }
-
-        /* Container untuk Game */
-        #game-frame {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        /* PANEL PREDIKSI KIRI ATAS */
-        #predictionPanel {
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0a0a12; }
+        iframe { width: 100%; height: 100%; border: none; }
+        
+        /* Panel Prediksi Kiri Atas */
+        #predPanel {
             position: fixed;
             top: 20px;
             left: 20px;
@@ -32,116 +18,61 @@
             border-left: 4px solid #8a2be2;
             border-radius: 12px;
             padding: 12px;
-            width: 160px;
+            width: 150px;
             z-index: 9999;
             box-shadow: 0 0 20px rgba(138, 43, 226, 0.5);
-            font-family: 'Inter', sans-serif;
-            backdrop-filter: blur(10px);
+            font-family: sans-serif;
             color: #f8f9ff;
+            pointer-events: none;
         }
-
-        .pred-header {
-            font-size: 10px;
-            color: #9ca3b3;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 2px;
-        }
-
-        .pred-value {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            font-family: monospace;
-            color: #00f5d4;
-        }
-
-        .pred-divider {
-            border-top: 1px solid rgba(255,255,255,0.1);
-            margin: 8px 0;
-        }
-
-        .pred-badge {
-            display: block;
-            text-align: center;
-            padding: 8px;
-            border-radius: 8px;
-            font-weight: 800;
-            font-size: 14px;
-            color: white;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-        }
-
-        .logic-note {
-            font-size: 9px;
-            color: #666;
-            text-align: center;
-            margin-top: 6px;
-        }
+        .h { font-size: 10px; color: #9ca3b3; text-transform: uppercase; margin-bottom: 2px; }
+        .v { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: #00f5d4; }
+        .badge { display: block; text-align: center; padding: 7px; border-radius: 8px; font-weight: 800; font-size: 13px; color: white; }
     </style>
 </head>
 <body>
 
-    <div id="predictionPanel">
-        <div class="pred-header">Time Left</div>
-        <div id="ui-timer" class="pred-value">--:--</div>
-        
-        <div class="pred-header">Period</div>
-        <div id="ui-period" class="pred-value" style="font-size:11px; color:#00c6ff;">--------</div>
-        
-        <div class="pred-divider"></div>
-        
-        <div class="pred-header" style="text-align:center; margin-bottom:5px;">Prediksi</div>
-        <div id="ui-result">
-            <span class="pred-badge" style="background: #333;">FETCHING...</span>
-        </div>
-        <div class="logic-note" id="ui-logic">Calculating...</div>
+    <div id="predPanel">
+        <div class="h">Time</div>
+        <div id="u-timer" class="v">--:--</div>
+        <div class="h">Period</div>
+        <div id="u-period" class="v" style="color:#00c6ff; font-size:11px;">--------</div>
+        <div style="border-top:1px solid rgba(255,255,255,0.1); margin: 8px 0;"></div>
+        <div id="u-res"><span class="badge" style="background:#333;">WAIT...</span></div>
     </div>
 
-    <iframe id="game-frame" src="https://battlegame.fun/games/wingo"></iframe>
+    <iframe id="game-frame" src="/games/wingo"></iframe>
 
     <script>
-        // FUNGSI UTAMA UNTUK MENGAMBIL DATA DARI IFRAME
-        function syncData() {
+        function sync() {
             try {
-                const iframe = document.getElementById('game-frame');
-                const innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+                const frame = document.getElementById('game-frame');
+                const doc = frame.contentDocument || frame.contentWindow.document;
+                const win = frame.contentWindow;
 
-                // 1. Ambil Timer & Periode dari elemen website di dalam iframe
-                const realTimer = innerDoc.getElementById('timerValue');
-                const realPeriod = innerDoc.getElementById('currentPeriodCompact');
+                const rt = doc.getElementById('timerValue');
+                const rp = doc.getElementById('currentPeriodCompact');
                 
-                if (realTimer) document.getElementById('ui-timer').textContent = realTimer.textContent;
-                if (realPeriod) document.getElementById('ui-period').textContent = realPeriod.textContent;
+                if (rt) document.getElementById('u-timer').textContent = rt.textContent;
+                if (rp) document.getElementById('u-period').textContent = rp.textContent;
 
-                // 2. Ambil Variabel lastResults dari window Iframe
-                const results = iframe.contentWindow.lastResults;
+                if (win.lastResults && win.lastResults.length >= 3) {
+                    const r0 = win.lastResults[0].result;
+                    const r2 = win.lastResults[2].result;
+                    const res = (r0 + r2) % 10;
+                    const isB = res >= 5;
+                    const col = isB ? '#2ed573' : '#ff4757';
 
-                if (results && results.length >= 3) {
-                    const res0 = results[0].result;
-                    const res2 = results[2].result;
-                    const sum = res0 + res2;
-                    const finalDigit = sum % 10;
-
-                    const isBig = finalDigit >= 5;
-                    const color = isBig ? '#2ed573' : '#ff4757';
-                    const text = isBig ? 'BESAR' : 'KECIL';
-
-                    document.getElementById('ui-result').innerHTML = `
-                        <span class="pred-badge" style="background: ${color}; box-shadow: 0 4px 10px ${color}66;">
-                            ${finalDigit} - ${text}
+                    document.getElementById('u-res').innerHTML = `
+                        <span class="badge" style="background:${col}; box-shadow: 0 4px 10px ${col}66;">
+                            ${res} - ${isB ? 'BESAR' : 'KECIL'}
                         </span>
+                        <div style="font-size:9px; color:#666; text-align:center; margin-top:5px;">Logic: ${r0}+${r2}</div>
                     `;
-                    document.getElementById('ui-logic').textContent = `Logic: ${res0} + ${res2} = ${sum}`;
                 }
-            } catch (e) {
-                // Pesan jika Iframe diblokir karena kebijakan Same-Origin
-                document.getElementById('ui-logic').textContent = "Waiting for Sync...";
-            }
+            } catch (e) {}
         }
-
-        // Update setiap 1 detik
-        setInterval(syncData, 1000);
+        setInterval(sync, 1000);
     </script>
 </body>
 </html>
